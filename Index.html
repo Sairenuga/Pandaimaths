@@ -41,6 +41,69 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
+    // --- Sound Effects Utility (Web Audio API synthesis for kid-friendly sounds) ---
+    const playSound = (type) => {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        
+        switch (type) {
+          case 'tap': {
+            // A cheerful, bubbly quick popping sound for selections
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.08);
+            break;
+          }
+          case 'correct': {
+            // A happy, rewarding musical chime (Arpeggio: C5 -> E5 -> G5)
+            const notes = [523.25, 659.25, 783.99]; 
+            notes.forEach((freq, index) => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'triangle'; // Smoother, musical tone
+              osc.frequency.setValueAtTime(freq, ctx.currentTime + index * 0.08);
+              gain.gain.setValueAtTime(0.12, ctx.currentTime + index * 0.08);
+              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + index * 0.08 + 0.25);
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start(ctx.currentTime + index * 0.08);
+              osc.stop(ctx.currentTime + index * 0.08 + 0.25);
+            });
+            break;
+          }
+          case 'wrong': {
+            // A gentle, non-punishing sliding down game-alert tone
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(250, ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+            break;
+          }
+          default:
+            break;
+        }
+      } catch (e) {
+        console.warn("Audio Context init block failed", e);
+      }
+    };
+
     // --- Configurations & Constants ---
     const STANDARDS = {
       1: { id: 1, labelTa: "தரம் 1", labelEn: "Standard 1", tagTa: "அடிப்படை அறிவு", tagEn: "Basic Knowledge", color: "#FF6B6B", textDark: "#9B2C2C", emoji: "🌱" },
@@ -403,6 +466,7 @@
 
       // Handle custom unique generated question batch formulation
       const startQuizSession = () => {
+        playSound('tap');
         const generated = [];
         const seenSignatures = new Set();
         let retries = 0;
@@ -452,9 +516,11 @@
 
       const evaluateAnswerOutcome = (isCorrect) => {
         if (isCorrect) {
+          playSound('correct');
           setFeedbackStatus("correct");
           setScore(prev => prev + 10);
         } else {
+          playSound('wrong');
           setFeedbackStatus("wrong");
           setLives(prev => {
             const nextLives = prev - 1;
@@ -520,6 +586,7 @@
       const isRightToLeft = currentQ && currentQ.extraData && currentQ.extraData.op !== "÷";
 
       const handleNumPadPress = (key) => {
+        playSound('tap');
         if (feedbackStatus !== null) return;
 
         if (key === "⌫") {
@@ -570,6 +637,7 @@
             {showBack && (
               <button 
                 onClick={() => {
+                  playSound('tap');
                   if (currentScreen === "QUIZ") {
                     if (confirm("Are you sure you want to exit the quiz? progress will be lost.")) {
                       setCurrentScreen("TOPICS");
@@ -595,6 +663,7 @@
             {currentScreen !== "QUIZ" && (
               <button 
                 onClick={() => {
+                  playSound('tap');
                   setPrevScreen(currentScreen);
                   setCurrentScreen("RECORDS");
                 }} 
@@ -647,6 +716,7 @@
               <button
                 disabled={!studentName.trim()}
                 onClick={() => {
+                  playSound('tap');
                   saveProfileData(studentName, lifetimeStars, history);
                   setCurrentScreen("HOME");
                 }}
@@ -686,6 +756,7 @@
                     <button
                       key={std.id}
                       onClick={() => {
+                        playSound('tap');
                         setSelectedStandard(std.id);
                         setPrevScreen("HOME");
                         setCurrentScreen("TOPICS");
@@ -728,6 +799,7 @@
                   <button
                     key={topic.id}
                     onClick={() => {
+                      playSound('tap');
                       setSelectedTopic(topic);
                       setPrevScreen("TOPICS");
                       setCurrentScreen("SETUP");
@@ -774,7 +846,7 @@
                     return (
                       <button
                         key={count}
-                        onClick={() => setQuestionCount(count)}
+                        onClick={() => { playSound('tap'); setQuestionCount(count); }}
                         style={isSelected ? { backgroundColor: currentAccentColor, color: '#fff' } : {}}
                         className={`py-2 rounded-xl border-2 text-center font-bold transition-all ${
                           isSelected ? 'border-transparent shadow-md scale-105 text-white' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -802,7 +874,7 @@
                     return (
                       <button
                         key={diffOpt.id}
-                        onClick={() => setDifficulty(diffOpt.id)}
+                        onClick={() => { playSound('tap'); setDifficulty(diffOpt.id); }}
                         style={isSelected ? { backgroundColor: diffOpt.activeColor, color: '#fff', borderColor: 'transparent' } : {}}
                         className={`py-2 px-1 rounded-xl border-2 text-center text-xs md:text-sm font-bold transition-all flex flex-col items-center justify-center ${
                           isSelected ? 'shadow-md scale-105 text-white' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -1124,14 +1196,14 @@
                 {/* Navigation Routing Action Elements Block Row */}
                 <div className="grid grid-cols-2 gap-3 mt-6">
                   <button
-                    onClick={() => setCurrentScreen("SETUP")}
+                    onClick={() => { playSound('tap'); setCurrentScreen("SETUP"); }}
                     className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-2 rounded-2xl border-b-4 border-amber-700 active:scale-95 transition-all text-sm btn-display flex flex-col items-center justify-center"
                   >
                     <span>🔁 மீண்டும் விளையாடு</span>
                     <span className="text-[10px] font-normal opacity-90 italic">Play Again</span>
                   </button>
                   <button
-                    onClick={() => setCurrentScreen("TOPICS")}
+                    onClick={() => { playSound('tap'); setCurrentScreen("TOPICS"); }}
                     className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-2 rounded-2xl border-b-4 border-gray-800 active:scale-95 transition-all text-sm btn-display flex flex-col items-center justify-center"
                   >
                     <span>🏠 மெனுவிற்குச் செல்</span>
