@@ -41,69 +41,6 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
-    // --- Sound Effects Utility (Web Audio API synthesis for kid-friendly sounds) ---
-    const playSound = (type) => {
-      try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
-        
-        switch (type) {
-          case 'tap': {
-            // A cheerful, bubbly quick popping sound for selections
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(400, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.08);
-            gain.gain.setValueAtTime(0.15, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.08);
-            break;
-          }
-          case 'correct': {
-            // A happy, rewarding musical chime (Arpeggio: C5 -> E5 -> G5)
-            const notes = [523.25, 659.25, 783.99]; 
-            notes.forEach((freq, index) => {
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.type = 'triangle'; // Smoother, musical tone
-              osc.frequency.setValueAtTime(freq, ctx.currentTime + index * 0.08);
-              gain.gain.setValueAtTime(0.12, ctx.currentTime + index * 0.08);
-              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + index * 0.08 + 0.25);
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start(ctx.currentTime + index * 0.08);
-              osc.stop(ctx.currentTime + index * 0.08 + 0.25);
-            });
-            break;
-          }
-          case 'wrong': {
-            // A gentle, non-punishing sliding down game-alert tone
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(250, ctx.currentTime);
-            osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.2);
-            gain.gain.setValueAtTime(0.1, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.2);
-            break;
-          }
-          default:
-            break;
-        }
-      } catch (e) {
-        console.warn("Audio Context init block failed", e);
-      }
-    };
-
     // --- Configurations & Constants ---
     const STANDARDS = {
       1: { id: 1, labelTa: "தரம் 1", labelEn: "Standard 1", tagTa: "அடிப்படை அறிவு", tagEn: "Basic Knowledge", color: "#FF6B6B", textDark: "#9B2C2C", emoji: "🌱" },
@@ -137,6 +74,8 @@
       { id: "speed", nameTa: "வேகம்", nameEn: "Speed", icon: "🚀", standards: [6] }
     ];
 
+    const SCREEN_ORDER = ["NAME_ENTRY", "HOME", "TOPICS", "SETUP", "QUIZ", "RESULTS", "RECORDS"];
+
     // Helper to shuffle arrays safely
     function shuffleArray(arr) {
       return [...arr].sort(() => Math.random() - 0.5);
@@ -146,14 +85,12 @@
     function generateQuestion(standard, topicId, difficulty) {
       let qTextTa = "";
       let qTextEn = "";
-      let options = []; // For multiple-choice
-      let answer = ""; // Will be string for comparison
-      let extraData = {}; // For specialized render state
+      let options = []; 
+      let answer = ""; 
+      let extraData = {}; 
 
-      // Common multipliers based on difficulty
       const diffMultiplier = difficulty === "easy" ? 0.5 : difficulty === "tough" ? 1.8 : 1.0;
 
-      // Base digit calculation rule
       let baseDigits = 2;
       if (standard === 2) baseDigits = 3;
       else if (standard === 3 || standard === 4) baseDigits = 4;
@@ -354,7 +291,7 @@
         case "average": {
           const n1 = Math.floor(Math.random() * 20) + 10;
           const n2 = Math.floor(Math.random() * 20) + 10;
-          const n3 = 30 - ((n1 + n2) % 3); // Make divisible by 3 smoothly
+          const n3 = 30 - ((n1 + n2) % 3); 
           const finalN3 = n3 > 0 ? n3 : 12;
           const sum = n1 + n2 + finalN3;
           qTextTa = `${n1}, ${n2}, மற்றும் ${finalN3} ஆகிய எண்களின் சராசரி மதிப்பு என்ன?`;
@@ -385,7 +322,6 @@
           break;
       }
 
-      // Safeguard options shuffling for MCQ style
       if (options.length > 0) {
         options = shuffleArray(Array.from(new Set(options)));
         while (options.length < 4) {
@@ -409,8 +345,8 @@
       // Game State
       const [studentName, setStudentName] = useState("");
       const [isLoaded, setIsLoaded] = useState(false);
-      const [currentScreen, setCurrentScreen] = useState("NAME_ENTRY"); // NAME_ENTRY, HOME, TOPICS, SETUP, QUIZ, RESULTS, RECORDS
-      const [prevScreen, setPrevScreen] = useState("HOME");
+      const [currentScreen, setCurrentScreen] = useState("NAME_ENTRY"); 
+      const [screenHistory, setScreenHistory] = useState(["NAME_ENTRY"]);
       
       // User Profile / Stats History State
       const [lifetimeStars, setLifetimeStars] = useState(0);
@@ -418,7 +354,7 @@
 
       // Current Quiz Parameter Preferences State
       const [selectedStandard, setSelectedStandard] = useState(1);
-      const [selectedTopic, setSelectedTopic] = useState(null);
+      const [selectedTopic, setSelectedTopic] = useState(ALL_TOPICS[0]);
       const [questionCount, setQuestionCount] = useState(10);
       const [difficulty, setDifficulty] = useState("medium");
 
@@ -432,10 +368,10 @@
       
       // Feedback UI State during Quiz
       const [selectedChoice, setSelectedChoice] = useState(null);
-      const [columnInputDigits, setColumnInputDigits] = useState([]); // tracks typed characters/digits array
-      const [feedbackStatus, setFeedbackStatus] = useState(null); // 'correct', 'wrong', null
+      const [columnInputDigits, setColumnInputDigits] = useState([]); 
+      const [feedbackStatus, setFeedbackStatus] = useState(null); 
 
-      // Sync local persistence storage setup simulate loading state delay
+      // Sync local persistence storage setup
       useEffect(() => {
         setTimeout(() => {
           const savedName = localStorage.getItem("pm_name") || "";
@@ -448,6 +384,7 @@
           
           if (savedName) {
             setCurrentScreen("HOME");
+            setScreenHistory(["NAME_ENTRY", "HOME"]);
           }
           setIsLoaded(true);
         }, 1200);
@@ -459,6 +396,64 @@
         localStorage.setItem("pm_history", JSON.stringify(newHistory));
       };
 
+      // Navigation handler helper supporting historical records tracking stacks
+      const navigateToScreen = (targetScreen) => {
+        if (currentScreen === "QUIZ" && targetScreen !== "QUIZ") {
+          if (!confirm("பயிற்சியிலிருந்து வெளியேற வேண்டுமா? உங்கள் முன்னேற்றம் சேமிக்கப்படாது. (Are you sure you want to exit the quiz? Progress will be lost.)")) {
+            return;
+          }
+        }
+        setScreenHistory(prev => [...prev, targetScreen]);
+        setCurrentScreen(targetScreen);
+      };
+
+      // Step backwards matching user request specifications
+      const navigateBackward = () => {
+        if (screenHistory.length <= 1) return;
+        
+        if (currentScreen === "QUIZ") {
+          if (!confirm("பயிற்சியிலிருந்து வெளியேற வேண்டுமா? உங்கள் முன்னேற்றம் சேமிக்கப்படாது. (Are you sure you want to exit the quiz? Progress will be lost.)")) {
+            return;
+          }
+        }
+
+        const updatedHistory = [...screenHistory];
+        updatedHistory.pop(); // Remove current screen
+        const prevScreen = updatedHistory[updatedHistory.length - 1];
+        
+        setScreenHistory(updatedHistory);
+        setCurrentScreen(prevScreen);
+      };
+
+      // Step forward sequential calculation rules wrapper layout 
+      const navigateForward = () => {
+        const currentIndex = SCREEN_ORDER.indexOf(currentScreen);
+        if (currentIndex === -1 || currentIndex >= SCREEN_ORDER.length - 1) return;
+        
+        // Block invalid forwards route jumps if core prerequisites aren't set
+        if (currentScreen === "NAME_ENTRY" && !studentName.trim()) return;
+        if (currentScreen === "TOPICS" && !selectedTopic) return;
+        if (currentScreen === "SETUP") {
+          startQuizSession();
+          return;
+        }
+        if (currentScreen === "QUIZ") return; // Cannot skip active answers
+
+        const nextScreen = SCREEN_ORDER[currentIndex + 1];
+        navigateToScreen(nextScreen);
+      };
+
+      // Jump directly to main base menu without hard resetting name values
+      const jumpToMainMenu = () => {
+        if (currentScreen === "QUIZ") {
+          if (!confirm("பயிற்சியிலிருந்து வெளியேற வேண்டுமா? உங்கள் முன்னேற்றம் சேமிக்கப்படாது. (Are you sure you want to exit the quiz? Progress will be lost.)")) {
+            return;
+          }
+        }
+        setScreenHistory(["NAME_ENTRY", "HOME"]);
+        setCurrentScreen("HOME");
+      };
+
       // Filter available topics dynamic based on primary school standard target
       const filteredTopics = useMemo(() => {
         return ALL_TOPICS.filter(t => t.standards.includes(selectedStandard));
@@ -466,15 +461,15 @@
 
       // Handle custom unique generated question batch formulation
       const startQuizSession = () => {
-        playSound('tap');
         const generated = [];
         const seenSignatures = new Set();
         let retries = 0;
 
+        const topicToUse = selectedTopic || filteredTopics[0] || ALL_TOPICS[0];
+
         while (generated.length < questionCount && retries < 200) {
-          const q = generateQuestion(selectedStandard, selectedTopic.id, difficulty);
-          // Identify duplicate configuration footprint safely
-          const signature = selectedTopic.style === "column" 
+          const q = generateQuestion(selectedStandard, topicToUse.id, difficulty);
+          const signature = topicToUse.style === "column" 
             ? `${q.extraData.op}_${q.extraData.num1}_${q.extraData.num2}` 
             : q.qTextTa;
 
@@ -486,10 +481,9 @@
           }
         }
 
-        // Fallback fallback rule injection if exhausted pool sizes
         if (generated.length < questionCount) {
           while (generated.length < questionCount) {
-            generated.push(generateQuestion(selectedStandard, selectedTopic.id, difficulty));
+            generated.push(generateQuestion(selectedStandard, topicToUse.id, difficulty));
           }
         }
 
@@ -501,6 +495,8 @@
         setSelectedChoice(null);
         setColumnInputDigits([]);
         setStartTime(Date.now());
+        
+        setScreenHistory(prev => [...prev, "QUIZ"]);
         setCurrentScreen("QUIZ");
       };
 
@@ -516,16 +512,11 @@
 
       const evaluateAnswerOutcome = (isCorrect) => {
         if (isCorrect) {
-          playSound('correct');
           setFeedbackStatus("correct");
           setScore(prev => prev + 10);
         } else {
-          playSound('wrong');
           setFeedbackStatus("wrong");
-          setLives(prev => {
-            const nextLives = prev - 1;
-            return nextLives;
-          });
+          setLives(prev => prev - 1);
         }
 
         setTimeout(() => {
@@ -538,7 +529,6 @@
         const nextIndex = currentQIndex + 1;
 
         if (nextLives <= 0 || nextIndex >= quizQuestions.length) {
-          // Finish and log results record
           const timeElapsed = Math.round((Date.now() - startTime) / 1000);
           setDurationSecs(timeElapsed);
           
@@ -552,11 +542,13 @@
           else if (accuracyPct >= 70) starsEarned = 2;
           else if (accuracyPct >= 50) starsEarned = 1;
 
+          const topicToUse = selectedTopic || ALL_TOPICS[0];
+
           const newRecord = {
             id: Math.random().toString(36).substring(2),
             standard: selectedStandard,
-            topicNameTa: selectedTopic.nameTa,
-            topicNameEn: selectedTopic.nameEn,
+            topicNameTa: topicToUse.nameTa,
+            topicNameEn: topicToUse.nameEn,
             date: new Date().toLocaleDateString('ms-MY'),
             difficulty,
             qCount: finalTotalQ,
@@ -571,6 +563,8 @@
           setHistory(updatedHistory);
           setLifetimeStars(updatedStars);
           saveProfileData(studentName, updatedStars, updatedHistory);
+          
+          setScreenHistory(prev => [...prev, "RESULTS"]);
           setCurrentScreen("RESULTS");
         } else {
           setCurrentQIndex(nextIndex);
@@ -580,37 +574,23 @@
         }
       };
 
-      // Column Arithmetic Input Mechanics
-      const currentQ = quizQuestions[currentQIndex];
-      const targetAnsStr = currentQ ? currentQ.answer : "";
-      const isRightToLeft = currentQ && currentQ.extraData && currentQ.extraData.op !== "÷";
-
       const handleNumPadPress = (key) => {
-        playSound('tap');
         if (feedbackStatus !== null) return;
+        const currentQ = quizQuestions[currentQIndex];
+        const targetAnsStr = currentQ ? currentQ.answer : "";
+        const isRightToLeft = currentQ && currentQ.extraData && currentQ.extraData.op !== "÷";
 
         if (key === "⌫") {
           setColumnInputDigits(prev => prev.slice(0, -1));
         } else if (key === "CLEAR") {
           setColumnInputDigits([]);
         } else {
-          // Add new digit limit size matching the absolute expected length bound
           if (columnInputDigits.length < targetAnsStr.length) {
             const nextDigits = [...columnInputDigits, key];
             setColumnInputDigits(nextDigits);
 
-            // Auto-check boundary validation block once filled
             if (nextDigits.length === targetAnsStr.length) {
-              // Convert built sequence correctly based on direction orientation logic
-              let typedAnswer = "";
-              if (isRightToLeft) {
-                // Right-to-left means first typed digit fills the rightmost box, 
-                // effectively meaning the output reading runs inverted backwards
-                typedAnswer = [...nextDigits].reverse().join("");
-              } else {
-                typedAnswer = nextDigits.join("");
-              }
-
+              let typedAnswer = isRightToLeft ? [...nextDigits].reverse().join("") : nextDigits.join("");
               const isCorrect = typedAnswer === targetAnsStr;
               evaluateAnswerOutcome(isCorrect);
             }
@@ -618,11 +598,9 @@
         }
       };
 
-      // Color Theme Helper utility variables for active selection
-      const currentAccentColor = STANDARDS[selectedStandard].color;
-      const currentDarkText = STANDARDS[selectedStandard].textDark;
+      const currentAccentColor = STANDARDS[selectedStandard]?.color || "#F59E0B";
+      const currentDarkText = STANDARDS[selectedStandard]?.textDark || "#78350F";
 
-      // Badges definitions
       const badges = [
         { id: "b1", nameTa: "வெண்கலம்", nameEn: "Bronze", stars: 10, icon: "🥉" },
         { id: "b2", nameTa: "வெள்ளி", nameEn: "Silver", stars: 25, icon: "🥈" },
@@ -630,54 +608,78 @@
         { id: "b4", nameTa: "வைரம்", nameEn: "Diamond", stars: 100, icon: "💎" }
       ];
 
-      // Safe Topbar Component rendering
-      const renderTopBar = (showBack = true) => (
-        <div className="w-full bg-white shadow-md border-b-4 border-amber-200 p-4 flex justify-between items-center mb-6">
-          <div className="flex items-center space-x-3">
-            {showBack && (
-              <button 
-                onClick={() => {
-                  playSound('tap');
-                  if (currentScreen === "QUIZ") {
-                    if (confirm("Are you sure you want to exit the quiz? progress will be lost.")) {
-                      setCurrentScreen("TOPICS");
-                    }
-                  } else {
-                    setCurrentScreen(prevScreen);
-                  }
-                }}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-3 py-1 rounded-xl border-2 border-gray-300 transition-colors"
-              >
-                ←
-              </button>
-            )}
-            <div className="flex items-center space-x-1">
-              <span className="text-2xl">🐯</span>
-              <span className="font-bold text-xl text-amber-800 tracking-wide">எண் புலி <span className="text-sm font-normal text-gray-500 block italic">Number Tiger</span></span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-full border border-amber-300 flex items-center shadow-inner">
-              <span className="mr-1 text-lg">⭐</span> {lifetimeStars}
-            </div>
-            {currentScreen !== "QUIZ" && (
-              <button 
-                onClick={() => {
-                  playSound('tap');
-                  setPrevScreen(currentScreen);
-                  setCurrentScreen("RECORDS");
-                }} 
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-1.5 rounded-xl border-b-4 border-purple-800 transition-all text-sm btn-display flex flex-col items-center"
-              >
-                <span>📋 பதிவு</span>
-                <span className="text-xs font-normal opacity-80 italic">Records</span>
-              </button>
-            )}
-          </div>
-        </div>
-      );
+      // Reusable Navigation Dashboard component bar rendering logic layout
+      const renderTopBar = () => {
+        const canGoBack = screenHistory.length > 1;
+        const currentIndex = SCREEN_ORDER.indexOf(currentScreen);
+        const canGoForward = currentIndex !== -1 && currentIndex < SCREEN_ORDER.length - 1 && currentScreen !== "QUIZ" && currentScreen !== "RESULTS" && (currentScreen !== "NAME_ENTRY" || studentName.trim());
 
-      // 1. Loading State screen fallback
+        return (
+          <div className="w-full bg-white shadow-md border-b-4 border-amber-200 p-4 flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            {/* Left Wing Actions: Directional steps back and forward alongside main app title */}
+            <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+              <div className="flex items-center space-x-1.5">
+                <button 
+                  onClick={navigateBackward}
+                  disabled={!canGoBack}
+                  className={`font-black px-3 py-1.5 rounded-xl border-2 transition-all ${
+                    canGoBack ? "bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-300" : "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
+                  }`}
+                  title="Backward"
+                >
+                  ←
+                </button>
+                <button 
+                  onClick={navigateForward}
+                  disabled={!canGoForward}
+                  className={`font-black px-3 py-1.5 rounded-xl border-2 transition-all ${
+                    canGoForward ? "bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-300" : "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
+                  }`}
+                  title="Forward"
+                >
+                  →
+                </button>
+              </div>
+
+              <div className="flex items-center space-x-1">
+                <span className="text-2xl">🐯</span>
+                <span className="font-bold text-xl text-amber-800 tracking-wide">எண் புலி <span className="text-sm font-normal text-gray-500 block italic">Number Tiger</span></span>
+              </div>
+            </div>
+
+            {/* Hub Engine Menu Dashboards Control Options */}
+            <div className="flex items-center justify-center space-x-2 w-full md:w-auto">
+              {currentScreen !== "NAME_ENTRY" && currentScreen !== "HOME" && (
+                <button
+                  onClick={jumpToMainMenu}
+                  className="bg-amber-500 hover:bg-amber-600 border-b-4 border-amber-700 text-white font-bold px-4 py-1.5 rounded-xl transition-all text-xs flex flex-col items-center"
+                >
+                  <span>🏠 முதன்மை மெனு</span>
+                  <span className="text-[10px] font-normal opacity-80 italic">Main Menu</span>
+                </button>
+              )}
+              
+              {currentScreen !== "QUIZ" && currentScreen !== "RECORDS" && currentScreen !== "NAME_ENTRY" && (
+                <button 
+                  onClick={() => navigateToScreen("RECORDS")} 
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-1.5 rounded-xl border-b-4 border-purple-800 transition-all text-xs flex flex-col items-center"
+                >
+                  <span>📋 பதிவுகள்</span>
+                  <span className="text-[10px] font-normal opacity-80 italic">Records</span>
+                </button>
+              )}
+            </div>
+
+            {/* Score Profile Metric Badges widgets right column align */}
+            <div className="flex items-center space-x-3 w-full md:w-auto justify-center md:justify-end">
+              <div className="bg-amber-100 text-amber-800 font-bold px-4 py-1.5 rounded-full border border-amber-300 flex items-center shadow-inner text-sm">
+                <span className="mr-1 text-lg">⭐</span> {lifetimeStars}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
       if (!isLoaded) {
         return (
           <div className="min-h-screen flex flex-col justify-center items-center bg-amber-50">
@@ -688,7 +690,7 @@
         );
       }
 
-      // 2. Screen: Name Entry Flow Screen
+      // Screen Renderers
       if (currentScreen === "NAME_ENTRY") {
         return (
           <div className="min-h-screen flex flex-col justify-center items-center p-4">
@@ -716,9 +718,8 @@
               <button
                 disabled={!studentName.trim()}
                 onClick={() => {
-                  playSound('tap');
                   saveProfileData(studentName, lifetimeStars, history);
-                  setCurrentScreen("HOME");
+                  navigateToScreen("HOME");
                 }}
                 className={`w-full py-4 rounded-2xl text-white font-black text-xl tracking-wider shadow-lg transition-all btn-display ${
                   studentName.trim() ? "bg-amber-500 hover:bg-amber-600 border-b-4 border-amber-700 active:transform active:scale-95" : "bg-gray-300 cursor-not-allowed"
@@ -731,23 +732,20 @@
         );
       }
 
-      // 3. Screen: HOME Screen (Standard Selection Path)
       if (currentScreen === "HOME") {
         return (
           <div className="min-h-screen pb-12 flex flex-col items-center">
-            {renderTopBar(false)}
+            {renderTopBar()}
             
             <div className="max-w-xl w-full px-4 text-center">
-              <h2 className="text-3xl font-extrabold text-amber-900 mb-1">வணக்கம், {studentName}! 👋</h2>
+              <h2 className="text-3xl font-extrabold text-amber-900 mb-1">வணக்கம், {studentName || "மாணவரே"}! 👋</h2>
               <p className="text-gray-700 font-medium">பயிற்சி செய்ய உங்கள் தரத்தைத் தேர்ந்தெடுக்கவும்.</p>
               <p className="text-xs text-gray-500 italic mb-8">Please choose your standard to practice.</p>
 
-              {/* Winding Vertical Trail Path */}
               <div className="relative flex flex-col items-center my-8">
-                <div className="absolute top-0 bottom-0 w-1 bg-dashed border-l-4 border-dashed border-amber-300 left-1/2 transform -translate-x-1/2 z-0"></div>
+                <div className="absolute top-0 bottom-0 w-1 border-l-4 border-dashed border-amber-300 left-1/2 transform -translate-x-1/2 z-0"></div>
                 
                 {Object.values(STANDARDS).map((std, idx) => {
-                  // Determine zigzag horizontal alignment layout distribution flow
                   let alignClass = "self-center";
                   if (idx % 3 === 0) alignClass = "self-start md:ml-6";
                   else if (idx % 3 === 2) alignClass = "self-end md:mr-6";
@@ -756,10 +754,8 @@
                     <button
                       key={std.id}
                       onClick={() => {
-                        playSound('tap');
                         setSelectedStandard(std.id);
-                        setPrevScreen("HOME");
-                        setCurrentScreen("TOPICS");
+                        navigateToScreen("TOPICS");
                       }}
                       style={{ backgroundColor: std.color }}
                       className={`z-10 my-4 ${alignClass} w-72 rounded-3xl p-4 text-white text-center shadow-lg hover:shadow-2xl hover:scale-105 active:scale-95 transition-all border-b-4 border-black/20 flex flex-col items-center`}
@@ -778,31 +774,28 @@
         );
       }
 
-      // 4. Screen: Topics Screen (2 Column Selection Grid)
       if (currentScreen === "TOPICS") {
         return (
           <div className="min-h-screen pb-12">
-            {renderTopBar(true)}
+            {renderTopBar()}
             
             <div className="max-w-4xl mx-auto px-4">
               <div className="text-center mb-8 bg-white p-4 rounded-2xl border-2 shadow-sm" style={{ borderColor: currentAccentColor }}>
                 <h2 className="text-2xl font-black" style={{ color: currentDarkText }}>
-                  {STANDARDS[selectedStandard].labelTa} - பாடத்தலைப்புகள்
+                  {STANDARDS[selectedStandard]?.labelTa} - பாடத்தலைப்புகள்
                 </h2>
                 <p className="text-sm text-gray-500 italic">
-                  {STANDARDS[selectedStandard].labelEn} - Select a Mathematics Topic
+                  {STANDARDS[selectedStandard]?.labelEn} - Select a Mathematics Topic
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 {filteredTopics.map(topic => (
                   <button
                     key={topic.id}
                     onClick={() => {
-                      playSound('tap');
                       setSelectedTopic(topic);
-                      setPrevScreen("TOPICS");
-                      setCurrentScreen("SETUP");
+                      navigateToScreen("SETUP");
                     }}
                     className="bg-white hover:bg-amber-50 p-4 rounded-2xl shadow-md border-2 border-gray-200 hover:border-amber-400 text-left transition-all flex items-center space-x-3 active:scale-95 group"
                   >
@@ -819,23 +812,25 @@
         );
       }
 
-      // 5. Screen: SETUP Screen (Question Counts and Difficulty Parameter Controls)
       if (currentScreen === "SETUP") {
+        const topicNameTa = selectedTopic ? selectedTopic.nameTa : "தலைப்பு";
+        const topicNameEn = selectedTopic ? selectedTopic.nameEn : "Topic";
+        const topicIcon = selectedTopic ? selectedTopic.icon : "🔢";
+
         return (
           <div className="min-h-screen pb-12">
-            {renderTopBar(true)}
+            {renderTopBar()}
             
             <div className="max-w-md mx-auto px-4">
               <div className="bg-white rounded-3xl shadow-xl p-6 border-4 text-center mb-6" style={{ borderColor: currentAccentColor }}>
-                <span className="text-5xl block mb-2">{selectedTopic.icon}</span>
-                <h2 className="text-2xl font-bold text-gray-800">{selectedTopic.nameTa}</h2>
-                <p className="text-xs text-gray-500 italic mb-4">{selectedTopic.nameEn}</p>
+                <span className="text-5xl block mb-2">{topicIcon}</span>
+                <h2 className="text-2xl font-bold text-gray-800">{topicNameTa}</h2>
+                <p className="text-xs text-gray-500 italic mb-4">{topicNameEn}</p>
                 <div className="inline-block text-xs font-bold px-3 py-1 rounded-full text-white" style={{ backgroundColor: currentAccentColor }}>
-                  {STANDARDS[selectedStandard].labelTa} &bull; {STANDARDS[selectedStandard].labelEn}
+                  {STANDARDS[selectedStandard]?.labelTa} &bull; {STANDARDS[selectedStandard]?.labelEn}
                 </div>
               </div>
 
-              {/* Selector Preference 1: Questions Count */}
               <div className="bg-white rounded-2xl p-5 shadow-md mb-4 border border-gray-200">
                 <label className="block text-sm font-bold text-gray-700 mb-3 text-center">
                   கேள்விகளின் எண்ணிக்கை <span className="text-xs font-normal text-gray-500 block italic">(Number of Questions)</span>
@@ -846,7 +841,7 @@
                     return (
                       <button
                         key={count}
-                        onClick={() => { playSound('tap'); setQuestionCount(count); }}
+                        onClick={() => setQuestionCount(count)}
                         style={isSelected ? { backgroundColor: currentAccentColor, color: '#fff' } : {}}
                         className={`py-2 rounded-xl border-2 text-center font-bold transition-all ${
                           isSelected ? 'border-transparent shadow-md scale-105 text-white' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -859,10 +854,9 @@
                 </div>
               </div>
 
-              {/* Selector Preference 2: Difficulty Selection Tier mapping custom colors rules */}
               <div className="bg-white rounded-2xl p-5 shadow-md mb-6 border border-gray-200">
                 <label className="block text-sm font-bold text-gray-700 mb-3 text-center">
-                  சரம நிலை <span className="text-xs font-normal text-gray-500 block italic">(Difficulty Level)</span>
+                  சிரம நிலை <span className="text-xs font-normal text-gray-500 block italic">(Difficulty Level)</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -874,7 +868,7 @@
                     return (
                       <button
                         key={diffOpt.id}
-                        onClick={() => { playSound('tap'); setDifficulty(diffOpt.id); }}
+                        onClick={() => setDifficulty(diffOpt.id)}
                         style={isSelected ? { backgroundColor: diffOpt.activeColor, color: '#fff', borderColor: 'transparent' } : {}}
                         className={`py-2 px-1 rounded-xl border-2 text-center text-xs md:text-sm font-bold transition-all flex flex-col items-center justify-center ${
                           isSelected ? 'shadow-md scale-105 text-white' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -888,7 +882,6 @@
                 </div>
               </div>
 
-              {/* Big Action Submit Button triggers internal formulation matrix */}
               <button
                 onClick={startQuizSession}
                 style={{ backgroundColor: currentAccentColor }}
@@ -902,21 +895,19 @@
         );
       }
 
-      // 6. Screen: Active Interactive QUIZ Session Arena
       if (currentScreen === "QUIZ") {
         const currentQ = quizQuestions[currentQIndex];
-        
-        // Safety lock mapping check block
         if (!currentQ) return null;
 
-        const isColumnStyle = selectedTopic.style === "column";
+        const isColumnStyle = selectedTopic && selectedTopic.style === "column";
+        const targetAnsStr = currentQ.answer;
+        const isRightToLeft = currentQ.extraData && currentQ.extraData.op !== "÷";
 
         return (
           <div className="min-h-screen pb-12 flex flex-col items-center">
-            {renderTopBar(true)}
+            {renderTopBar()}
             
             <div className="max-w-xl w-full px-4">
-              {/* Live Status Tracker Bar elements */}
               <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-200 flex justify-between items-center mb-6 text-sm font-bold text-gray-700">
                 <div>
                   வினா <span className="text-xs text-gray-400 italic">(Q)</span>: <span className="text-amber-600 text-base">{currentQIndex + 1}</span> / {quizQuestions.length}
@@ -933,25 +924,20 @@
                 </div>
               </div>
 
-              {/* Core Presentation Content Canvas Layout Wrapper Blocks */}
               {isColumnStyle ? (
-                /* STYLE A: Specialized Dynamic Math Digit Input Alignment Column Entry Blocks */
                 <div className="bg-white rounded-3xl shadow-xl p-6 border-2 border-gray-100 flex flex-col items-center">
                   <p className="text-xs text-center font-bold text-gray-500 bg-amber-50 px-4 py-1.5 rounded-full border mb-6">
                     {currentQ.extraData.op === "÷" 
-                      ? "ஈவுத்தொகையை இடமிருந்து வலமாக உள்ளிடவும் (Enter the quotient from left to right)"
-                      : "பதிலை வலமிருந்து இடமாக உள்ளிடவும் (Enter the answer from right to left)"}
+                      ? "ஈவுத்தொகையை இடமிருந்து வலமாக உள்ளிடவும் (Enter from left to right)"
+                      : "பதிலை வலமிருந்து இடமாக உள்ளிடவும் (Enter from right to left)"}
                   </p>
 
                   <div className="my-8 font-mono text-4xl font-bold tracking-widest text-gray-800 w-full flex flex-col items-center">
                     {currentQ.extraData.op === "÷" ? (
-                      /* Special Subrenderer layout wrapper: Long division brackets block mapping design rules */
                       <div className="flex flex-col items-end relative mr-8">
-                        {/* Interactive result placeholder layout grid map inside quotient rows */}
                         <div className="flex justify-end mb-1 pr-1">
                           {Array.from({ length: targetAnsStr.length }).map((_, i) => {
                             const digitVal = columnInputDigits[i] || "";
-                            // Left-to-right active box calculation index check
                             const isActive = feedbackStatus === null && columnInputDigits.length === i;
                             
                             let boxBorderColor = "border-gray-300";
@@ -970,29 +956,22 @@
                             );
                           })}
                         </div>
-                        {/* Main lower layout rows bracket container wrapper */}
                         <div className="flex items-center border-t-4 border-gray-800 pt-1">
                           <span className="text-2xl text-gray-500 mr-2 font-sans">{currentQ.extraData.num2}</span>
                           <span className="border-l-4 border-gray-800 pl-3 py-1 rounded-tl-md">{currentQ.extraData.num1}</span>
                         </div>
                       </div>
                     ) : (
-                      /* Direct Stacked Grid Layout structure mapping standard addition subtraction multiplication */
                       <div className="flex flex-col items-end pr-8 relative">
                         <div className="mb-1">{currentQ.extraData.num1}</div>
                         <div className="border-b-4 border-gray-800 pb-2 mb-3 relative w-full text-right">
                           <span className="absolute left-0 bottom-1 text-3xl font-sans text-gray-400">{currentQ.extraData.op}</span>
                           {currentQ.extraData.num2}
                         </div>
-                        {/* Dynamic Input Row Blocks matching expected digit array counts lengths accurately */}
                         <div className="flex justify-end">
                           {Array.from({ length: targetAnsStr.length }).map((_, i) => {
-                            // Map index matching right-to-left orientation rules correctly
-                            // target index reads inverted mirror array sequence indexes
                             const boxIndexFromRight = targetAnsStr.length - 1 - i;
                             const digitVal = columnInputDigits[boxIndexFromRight] || "";
-                            
-                            // Right to left calculation tracker checks matching index keys
                             const isActive = feedbackStatus === null && columnInputDigits.length === boxIndexFromRight;
 
                             let boxBorderColor = "border-gray-300";
@@ -1015,7 +994,6 @@
                     )}
                   </div>
 
-                  {/* Custom Styled Functional Numeric Keypad Elements block grid layouts */}
                   <div className="w-full max-w-sm mt-4 grid grid-cols-3 gap-3">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                       <button
@@ -1048,7 +1026,6 @@
                   </div>
                 </div>
               ) : (
-                /* STYLE B: Standard Dynamic Bilingual Multiple-Choice Option Grid Setups */
                 <div className="w-full flex flex-col space-y-4">
                   <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-200 text-center min-h-[120px] flex flex-col justify-center">
                     <h3 className="text-xl font-bold text-gray-800 leading-relaxed mb-2">{currentQ.qTextTa}</h3>
@@ -1072,7 +1049,6 @@
                         }
                       }
 
-                      // Dynamic splitting logic if word options have integrated translation markings
                       const optionParts = option.split(" / ");
                       const taLine = optionParts[0];
                       const enLine = optionParts[1] || optionParts[0];
@@ -1085,7 +1061,6 @@
                           className={`w-full p-4 rounded-2xl border-2 font-semibold text-center transition-all active:scale-[0.99] flex flex-col items-center justify-center shadow-sm ${btnStyle}`}
                         >
                           <span className="text-base md:text-lg">{taLine}</span>
-                          {/* Always keep a secondary inline smaller translation note layout block for balance */}
                           <span className={`text-xs block font-normal italic ${isSelected || (feedbackStatus && isCorrectAnswer) ? 'text-white/90' : 'text-gray-400'}`}>
                             {enLine}
                           </span>
@@ -1100,14 +1075,12 @@
         );
       }
 
-      // 7. Screen: RESULTS Summary Card Dashboard
       if (currentScreen === "RESULTS") {
         const totalQ = quizQuestions.length;
         const correctAnswers = score / 10;
-        const accuracy = Math.round((correctAnswers / totalQ) * 100);
+        const accuracy = totalQ > 0 ? Math.round((correctAnswers / totalQ) * 100) : 0;
         const isGameOver = lives <= 0;
 
-        // Dynamic multi-tier feedback statement injection
         let feedbackHeadingTa = "வாழ்த்துகள்!";
         let feedbackHeadingEn = "Congratulations!";
         let msgTa = "சிறப்பான செயல்பாடு! கணிதத்தில் நீங்கள் புத்திசாலி தான்!";
@@ -1137,7 +1110,7 @@
 
         return (
           <div className="min-h-screen pb-12 flex flex-col items-center">
-            {renderTopBar(false)}
+            {renderTopBar()}
             
             <div className="max-w-md w-full px-4">
               <div className="bg-white rounded-3xl shadow-xl p-6 border-4 border-amber-400 text-center mb-6">
@@ -1147,7 +1120,6 @@
                 
                 <h4 className="text-lg font-bold text-gray-700 mb-1">{studentName}</h4>
 
-                {/* Stars metrics display logic row block */}
                 <div className="flex justify-center space-x-2 my-4">
                   {[1, 2, 3].map(sNum => (
                     <span key={sNum} className="text-3xl">
@@ -1161,7 +1133,6 @@
                   <p className="text-xs text-amber-700/70 font-normal italic mt-1">{msgEn}</p>
                 </div>
 
-                {/* Score Summary Metrics Grid Table Layout Box */}
                 <div className="border-t border-b border-gray-200 py-3 my-4 space-y-2 text-left">
                   <div className="flex justify-between items-center text-sm text-gray-700">
                     <div>
@@ -1193,21 +1164,20 @@
                   </div>
                 </div>
 
-                {/* Navigation Routing Action Elements Block Row */}
                 <div className="grid grid-cols-2 gap-3 mt-6">
                   <button
-                    onClick={() => { playSound('tap'); setCurrentScreen("SETUP"); }}
+                    onClick={startQuizSession}
                     className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-2 rounded-2xl border-b-4 border-amber-700 active:scale-95 transition-all text-sm btn-display flex flex-col items-center justify-center"
                   >
                     <span>🔁 மீண்டும் விளையாடு</span>
                     <span className="text-[10px] font-normal opacity-90 italic">Play Again</span>
                   </button>
                   <button
-                    onClick={() => { playSound('tap'); setCurrentScreen("TOPICS"); }}
+                    onClick={() => navigateToScreen("TOPICS")}
                     className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-2 rounded-2xl border-b-4 border-gray-800 active:scale-95 transition-all text-sm btn-display flex flex-col items-center justify-center"
                   >
-                    <span>🏠 மெனுவிற்குச் செல்</span>
-                    <span className="text-[10px] font-normal opacity-90 italic">Back to Menu</span>
+                    <span>📚 தலைப்புகள்</span>
+                    <span className="text-[10px] font-normal opacity-90 italic">Topics List</span>
                   </button>
                 </div>
               </div>
@@ -1216,14 +1186,12 @@
         );
       }
 
-      // 8. Screen: RECORDS Analytics Tracker Log Page
       if (currentScreen === "RECORDS") {
         return (
           <div className="min-h-screen pb-12">
-            {renderTopBar(true)}
+            {renderTopBar()}
             
             <div className="max-w-2xl mx-auto px-4">
-              {/* Badges Milestones Unlocking Segment Box */}
               <div className="bg-white rounded-3xl shadow-md p-6 border border-gray-200 mb-6">
                 <h3 className="text-xl font-bold text-purple-900 mb-1">🏅 சாதனை பதக்கங்கள்</h3>
                 <p className="text-xs text-gray-400 italic mb-4">Achievement Badges - Earn stars to unlock milestones</p>
@@ -1250,7 +1218,6 @@
                 </div>
               </div>
 
-              {/* Reverse Chronological Log Performance Records Section Table Cards Grid */}
               <div className="bg-white rounded-3xl shadow-md p-6 border border-gray-200">
                 <h3 className="text-xl font-bold text-amber-900 mb-1">📋 செயல்திறன் பதிவு</h3>
                 <p className="text-xs text-gray-400 italic mb-4">Performance Record - Past Quiz Attempts history log</p>
@@ -1292,7 +1259,6 @@
       return null;
     }
 
-    // Mount to Virtual DOM root selector injection anchor element point
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<PandaiMathsApp />);
   </script>
