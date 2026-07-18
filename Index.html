@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>கணிதத்தில் புத்திசாலி (PANDAIMATHS)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React and ReactDOM from CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel for JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Google Fonts for Tamil and English supporting typography -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;700;800&family=Hind+Madurai:wght@400;600;700&display=swap');
+    
+    body {
+      font-family: 'Hind Madurai', sans-serif;
+      background-color: #FFF8ED;
+      color: #2D3748;
+    }
+    
+    h1, h2, h3, button.btn-display {
+      font-family: 'Baloo Thambi 2', sans-serif;
+    }
+
+    /* Standard accent color configuration lookup mapping helper classes */
+    .border-active {
+      animation: pulseBorder 1.5s infinite ease-in-out;
+    }
+    @keyframes pulseBorder {
+      0%, 100% { border-color: rgba(0,0,0,0.2); }
+      50% { border-color: currentColor; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- Configurations & Constants ---
+    const STANDARDS = {
+      1: { id: 1, labelTa: "தரம் 1", labelEn: "Standard 1", tagTa: "அடிப்படை அறிவு", tagEn: "Basic Knowledge", color: "#FF6B6B", textDark: "#9B2C2C", emoji: "🌱" },
+      2: { id: 2, labelTa: "தரம் 2", labelEn: "Standard 2", tagTa: "அடித்தளம் அமைப்பு", tagEn: "Building Foundations", color: "#FF9F43", textDark: "#9C4221", emoji: "🍀" },
+      3: { id: 3, labelTa: "தரம் 3", labelEn: "Standard 3", tagTa: "திறன் வளர்த்தல்", tagEn: "Skill Development", color: "#F4C542", textDark: "#8A6D05", emoji: "🚀" },
+      4: { id: 4, labelTa: "தரம் 4", labelEn: "Standard 4", tagTa: "வேகமான கணக்கீடு", tagEn: "Fast Computation", color: "#5FBF6B", textDark: "#22543D", emoji: "⚡" },
+      5: { id: 5, labelTa: "தரம் 5", labelEn: "Standard 5", tagTa: "உயர் சிந்தனை திறன்", tagEn: "Higher Thinking Skills", color: "#4D96FF", textDark: "#1A365D", emoji: "🧠" },
+      6: { id: 6, labelTa: "தரம் 6", labelEn: "Standard 6", tagTa: "கணித நிபுணர்", tagEn: "Math Expert", color: "#9B59B6", textDark: "#4A285A", emoji: "🏆" }
+    };
+
+    const ALL_TOPICS = [
+      { id: "whole_numbers", nameTa: "முழு எண்கள்", nameEn: "Whole Numbers", icon: "🔢", standards: [1,2,3,4,5,6] },
+      { id: "addition", nameTa: "கூட்டல்", nameEn: "Addition", icon: "➕", standards: [1,2,3,4,5,6], style: "column" },
+      { id: "subtraction", nameTa: "கழித்தல்", nameEn: "Subtraction", icon: "➖", standards: [1,2,3,4,5,6], style: "column" },
+      { id: "multiplication", nameTa: "பெருக்கல்", nameEn: "Multiplication", icon: "✖️", standards: [2,3,4,5,6], style: "column" },
+      { id: "division", nameTa: "வகுத்தல்", nameEn: "Division", icon: "➗", standards: [3,4,5,6], style: "column" },
+      { id: "fractions", nameTa: "பின்னங்கள்", nameEn: "Fractions", icon: "🍰", standards: [3,4,5,6] },
+      { id: "decimals", nameTa: "தசம எண்கள்", nameEn: "Decimals", icon: "🔟", standards: [4,5,6] },
+      { id: "percentage", nameTa: "சதவீதம்", nameEn: "Percentage", icon: "💯", standards: [5,6] },
+      { id: "money", nameTa: "பணம்", nameEn: "Money", icon: "💰", standards: [1,2,3,4,5,6] },
+      { id: "time", nameTa: "நேரம் & காலம்", nameEn: "Time & Duration", icon: "⏰", standards: [1,2,3,4,5,6] },
+      { id: "length", nameTa: "நீளம்", nameEn: "Length", icon: "📏", standards: [1,2,3,4,5] },
+      { id: "mass", nameTa: "திணிவு", nameEn: "Mass", icon: "⚖️", standards: [1,2,3,4,5] },
+      { id: "volume_liq", nameTa: "கொள்ளளவு", nameEn: "Volume of Liquid", icon: "🥤", standards: [2,3,4,5] },
+      { id: "shapes", nameTa: "வடிவங்கள்", nameEn: "Shapes", icon: "🔺", standards: [1,2,3,4] },
+      { id: "area", nameTa: "பரப்பளவு", nameEn: "Area", icon: "📐", standards: [4,5,6] },
+      { id: "volume_cubes", nameTa: "கன அளவு", nameEn: "Volume of Cubes", icon: "🧊", standards: [5,6] },
+      { id: "data_handling", nameTa: "தரவு கையாளுதல்", nameEn: "Data Handling", icon: "📊", standards: [3,4,5,6] },
+      { id: "average", nameTa: "சராசரி", nameEn: "Average", icon: "🎯", standards: [5,6] },
+      { id: "ratio", nameTa: "விகிதம்", nameEn: "Ratio", icon: "🔗", standards: [6] },
+      { id: "speed", nameTa: "வேகம்", nameEn: "Speed", icon: "🚀", standards: [6] }
+    ];
+
+    // Helper to shuffle arrays safely
+    function shuffleArray(arr) {
+      return [...arr].sort(() => Math.random() - 0.5);
+    }
+
+    // --- Helper Question Generator Functions ---
+    function generateQuestion(standard, topicId, difficulty) {
+      let qTextTa = "";
+      let qTextEn = "";
+      let options = []; // For multiple-choice
+      let answer = ""; // Will be string for comparison
+      let extraData = {}; // For specialized render state
+
+      // Common multipliers based on difficulty
+      const diffMultiplier = difficulty === "easy" ? 0.5 : difficulty === "tough" ? 1.8 : 1.0;
+
+      // Base digit calculation rule
+      let baseDigits = 2;
+      if (standard === 2) baseDigits = 3;
+      else if (standard === 3 || standard === 4) baseDigits = 4;
+      else if (standard >= 5) baseDigits = 5;
+
+      if (difficulty === "easy") baseDigits = Math.max(1, baseDigits - 1);
+      if (difficulty === "tough") baseDigits = baseDigits + 1;
+
+      const maxVal = Math.pow(10, baseDigits) - 1;
+      const minVal = Math.pow(10, baseDigits - 1);
+
+      switch (topicId) {
+        case "addition": {
+          const num1 = Math.floor(Math.random() * (maxVal - minVal)) + minVal;
+          const num2 = Math.floor(Math.random() * (maxVal - minVal)) + minVal;
+          answer = (num1 + num2).toString();
+          extraData = { num1, num2, op: "+" };
+          break;
+        }
+        case "subtraction": {
+          let num1 = Math.floor(Math.random() * (maxVal - minVal)) + minVal;
+          let num2 = Math.floor(Math.random() * (num1 - minVal)) + minVal;
+          if (num1 < num2) { const tmp = num1; num1 = num2; num2 = tmp; }
+          answer = (num1 - num2).toString();
+          extraData = { num1, num2, op: "-" };
+          break;
+        }
+        case "multiplication": {
+          let maxFactor2 = difficulty === "easy" ? 6 : difficulty === "tough" ? 20 : 12;
+          const num1 = Math.floor(Math.random() * (maxVal/10 - minVal/10)) + Math.max(2, Math.floor(minVal/10));
+          const num2 = Math.floor(Math.random() * (maxFactor2 - 2)) + 2;
+          answer = (num1 * num2).toString();
+          extraData = { num1, num2, op: "×" };
+          break;
+        }
+        case "division": {
+          let maxDivisor = difficulty === "easy" ? 5 : difficulty === "tough" ? 20 : 9;
+          const divisor = Math.floor(Math.random() * (maxDivisor - 2)) + 2;
+          const quotient = Math.floor(Math.random() * (maxVal/10 - minVal/10)) + Math.max(2, Math.floor(minVal/10));
+          const dividend = quotient * divisor;
+          answer = quotient.toString();
+          extraData = { num1: dividend, num2: divisor, op: "÷" };
+          break;
+        }
+        case "whole_numbers": {
+          const base = Math.floor(Math.random() * 500 * diffMultiplier) + 10;
+          const type = Math.random() > 0.5 ? "place" : "word";
+          if (type === "place") {
+            qTextTa = `${base} இல் உள்ள இலக்கத்தின் இடமதிப்பு என்ன?`;
+            qTextEn = `What is the place value of the underlined digit in ${base}?`;
+            answer = String(base); 
+            options = [answer, String(base + 5), String(base * 10), String(Math.floor(base/2))];
+          } else {
+            qTextTa = `எண் ${base} இன் சரியான சொல் வடிவம் எது?`;
+            qTextEn = `Which is the correct word form of the number ${base}?`;
+            answer = `எண் ${base} / Number ${base}`;
+            options = [answer, `எண் ${base + 2} / Number ${base + 2}`, `எண் ${base * 2} / Number ${base * 2}`, `எண் ${base - 1} / Number ${base - 1}`];
+          }
+          break;
+        }
+        case "fractions": {
+          const den = [3, 4, 5, 6, 8, 10][Math.floor(Math.random() * 6)];
+          const num = Math.floor(Math.random() * (den - 1)) + 1;
+          qTextTa = `வடிவத்தின் நிழலிடப்பட்ட பகுதிக்கு உகந்த பின்னம் எது?`;
+          qTextEn = `What is the fraction matching the shaded part of the shape?`;
+          answer = `${num}/${den}`;
+          options = [answer, `${Math.min(den, num+1)}/${den}`, `${num}/${den+2}`, `1/${den}`];
+          break;
+        }
+        case "decimals": {
+          const val = (Math.random() * 10 * diffMultiplier).toFixed(2);
+          qTextTa = `கொடுக்கப்பட்ட மதிப்பை தசம எண்ணாகக் கண்டறிக:`;
+          qTextEn = `Identify the given value as a decimal number:`;
+          answer = `${val}`;
+          options = [answer, `${(parseFloat(val)+0.1).toFixed(2)}`, `${(parseFloat(val)*2).toFixed(2)}`, `${(parseFloat(val)/2).toFixed(2)}`];
+          break;
+        }
+        case "percentage": {
+          if (difficulty === "tough") {
+            const total = [50, 100, 200, 500][Math.floor(Math.random() * 4)];
+            const pct = [10, 25, 50, 75][Math.floor(Math.random() * 4)];
+            qTextTa = `${total} இல் ${pct}% எவ்வளவு?`;
+            qTextEn = `What is ${pct}% of ${total}?`;
+            const ansVal = (total * pct) / 100;
+            answer = `${ansVal}`;
+            options = [answer, `${ansVal + 5}`, `${ansVal * 2}`, `${Math.max(0, ansVal - 10)}`];
+          } else {
+            const idx = Math.floor(Math.random() * 3);
+            const pairs = [{p:"50%", f:"1/2"}, {p:"25%", f:"1/4"}, {p:"75%", f:"3/4"}];
+            qTextTa = `விழுக்காடு ${pairs[idx].p} இன் பின்ன வடிவம் என்ன?`;
+            qTextEn = `What is the fraction equivalent of percentage ${pairs[idx].p}?`;
+            answer = pairs[idx].f;
+            options = [answer, "1/3", "1/5", "2/3"];
+          }
+          break;
+        }
+        case "money": {
+          const basePrice = (Math.random() * 50 * diffMultiplier + 5).toFixed(2);
+          qTextTa = `பொருளின் விலை RM ${basePrice}. இதைச் செலுத்த சரியான பணக் கலவை எது?`;
+          qTextEn = `The price is RM ${basePrice}. Which currency set matches this?`;
+          answer = `RM ${basePrice}`;
+          options = [answer, `RM ${(parseFloat(basePrice) + 1.5).toFixed(2)}`, `RM ${(parseFloat(basePrice) * 1.2).toFixed(2)}`, `RM ${(parseFloat(basePrice) - 0.5).toFixed(2)}`];
+          break;
+        }
+        case "time": {
+          const hours = Math.floor(Math.random() * 5) + 1;
+          qTextTa = `${hours} மணிநேரம் என்பது எத்தனை நிமிடங்கள்?`;
+          qTextEn = `How many minutes are there in ${hours} hours?`;
+          answer = `${hours * 60} நிமிடங்கள் / minutes`;
+          options = [answer, `${hours * 50} நிமிடங்கள் / minutes`, `${hours * 60 + 30} நிமிடங்கள் / minutes`, `${hours * 12} நிமிடங்கள் / minutes`];
+          break;
+        }
+        case "length": {
+          const m = Math.floor(Math.random() * 8 * diffMultiplier) + 1;
+          if (difficulty === "tough") {
+            const cm = Math.floor(Math.random() * 90) + 10;
+            qTextTa = `${m} m ${cm} cm என்பது எத்தனை cm?`;
+            qTextEn = `How many cm is ${m} m and ${cm} cm?`;
+            answer = `${(m * 100) + cm} cm`;
+          } else {
+            qTextTa = `${m} மீட்டர் (m) என்பது எத்தனை சென்டிமீட்டர் (cm)?`;
+            qTextEn = `How many centimeters (cm) in ${m} meters (m)?`;
+            answer = `${m * 100} cm`;
+          }
+          options = [answer, `${m * 10} cm`, `${m * 1000} cm`, `${m * 100 + 50} cm`];
+          break;
+        }
+        case "mass": {
+          const kg = Math.floor(Math.random() * 5 * diffMultiplier) + 1;
+          if (difficulty === "tough") {
+            const g = Math.floor(Math.random() * 800) + 100;
+            qTextTa = `${kg} kg ${g} g என்பது எத்தனை கிராம்கள் (g)?`;
+            qTextEn = `How many grams is ${kg} kg and ${g} g?`;
+            answer = `${(kg * 1000) + g} g`;
+          } else {
+            qTextTa = `${kg} கிலோகிராம் (kg) என்பது எத்தனை கிராம்கள் (g)?`;
+            qTextEn = `How many grams (g) in ${kg} kilograms (kg)?`;
+            answer = `${kg * 1000} g`;
+          }
+          options = [answer, `${kg * 100} g`, `${kg * 10000} g`, `${kg * 500} g`];
+          break;
+        }
+        case "volume_liq": {
+          const l = Math.floor(Math.random() * 6 * diffMultiplier) + 1;
+          if (difficulty === "tough") {
+            const ml = Math.floor(Math.random() * 800) + 100;
+            qTextTa = `${l} l ${ml} ml என்பது எத்தனை மில்லிமீட்டர் (ml)?`;
+            qTextEn = `How many ml is ${l} l and ${ml} ml?`;
+            answer = `${(l * 1000) + ml} ml`;
+          } else {
+            qTextTa = `${l} லிட்டர் (l) என்பது எத்தனை மில்லிமீட்டர் (ml)?`;
+            qTextEn = `How many milliliters (ml) in ${l} liters (l)?`;
+            answer = `${l * 1000} ml`;
+          }
+          options = [answer, `${l * 100} ml`, `${l * 2000} ml`, `${l * 10} ml`];
+          break;
+        }
+        case "shapes": {
+          const shapeList = [
+            { ta: "முக்கோணம்", en: "Triangle", sides: "3" },
+            { ta: "சதுரம்", en: "Square", sides: "4" },
+            { ta: "ஐங்கோணம்", en: "Pentagon", sides: "5" },
+            { ta: "அறுகோணம்", en: "Hexagon", sides: "6" }
+          ];
+          const pick = shapeList[Math.floor(Math.random() * shapeList.length)];
+          qTextTa = `${pick.ta} வடிவத்திற்கு எத்தனை பக்கங்கள் உள்ளன?`;
+          qTextEn = `How many sides does a ${pick.en} have?`;
+          answer = pick.sides;
+          options = ["3", "4", "5", "6"];
+          break;
+        }
+        case "area": {
+          const w = Math.floor(Math.random() * 8 * diffMultiplier) + 3;
+          const h = Math.floor(Math.random() * 5 * diffMultiplier) + 2;
+          qTextTa = `நீளம் ${w} cm மற்றும் அகலம் ${h} cm கொண்ட செவ்வகத்தின் பரப்பளவு என்ன?`;
+          qTextEn = `What is the area of a rectangle with length ${w} cm and width ${h} cm?`;
+          answer = `${w * h} cm²`;
+          options = [answer, `${(w + h) * 2} cm²`, `${w * h + 4} cm²`, `${w + h} cm²`];
+          break;
+        }
+        case "volume_cubes": {
+          const s = Math.floor(Math.random() * 4 * diffMultiplier) + 2;
+          qTextTa = `பக்க அளவு ${s} cm கொண்ட ஒரு கனசதுரத்தின் கன அளவு என்ன?`;
+          qTextEn = `What is the volume of a cube with side length ${s} cm?`;
+          answer = `${s * s * s} cm³`;
+          options = [answer, `${s * 3} cm³`, `${s * s} cm³`, `${s * s * s + 10} cm³`];
+          break;
+        }
+        case "data_handling": {
+          const v1 = Math.floor(Math.random() * 10) + 2;
+          const v2 = Math.floor(Math.random() * 10) + 2;
+          qTextTa = `வரைபடத்தில் அமுதாவிடம் ${v1} பழங்களும், கவிதாவின் வசம் ${v2} பழங்களும் இருந்தால், இருவரிடமும் உள்ள மொத்தப் பழங்கள் எவ்வளவு?`;
+          qTextEn = `In the chart, Amuda has ${v1} fruits and Kavitha has ${v2} fruits. What is the total?`;
+          answer = `${v1 + v2}`;
+          options = [answer, `${v1 * v2}`, `${Math.abs(v1 - v2)}`, `${v1 + v2 + 2}`];
+          break;
+        }
+        case "average": {
+          const n1 = Math.floor(Math.random() * 20) + 10;
+          const n2 = Math.floor(Math.random() * 20) + 10;
+          const n3 = 30 - ((n1 + n2) % 3); // Make divisible by 3 smoothly
+          const finalN3 = n3 > 0 ? n3 : 12;
+          const sum = n1 + n2 + finalN3;
+          qTextTa = `${n1}, ${n2}, மற்றும் ${finalN3} ஆகிய எண்களின் சராசரி மதிப்பு என்ன?`;
+          qTextEn = `What is the average of the numbers ${n1}, ${n2}, and ${finalN3}?`;
+          answer = `${Math.round(sum / 3)}`;
+          options = [answer, `${Math.round(sum / 3) + 2}`, `${sum}`, `${Math.round(sum / 2)}`];
+          break;
+        }
+        case "ratio": {
+          const r1 = Math.floor(Math.random() * 5) + 1;
+          const r2 = Math.floor(Math.random() * 7) + 2;
+          qTextTa = `ஒரு கூடையில் ${r1} ஆப்பிள்களும் ${r2} ஆரஞ்சுகளும் உள்ளன. ஆப்பிள்களுக்கும் ஆரஞ்சுகளுக்கும் இடையே உள்ள விகிதம் என்ன?`;
+          qTextEn = `A basket has ${r1} apples and ${r2} oranges. What is the ratio of apples to oranges?`;
+          answer = `${r1} : ${r2}`;
+          options = [answer, `${r2} : ${r1}`, `${r1} : ${(r2+1)}`, `1 : ${r2}`];
+          break;
+        }
+        case "speed": {
+          const dist = [60, 120, 180, 240][Math.floor(Math.random() * 4)];
+          const time = [1, 2, 3, 4][Math.floor(Math.random() * 4)];
+          qTextTa = `ஒரு வாகனம் ${time} மணிநேரத்தில் ${dist} km தூரத்தைக் கடந்தால், அதன் வேகம் என்ன?`;
+          qTextEn = `If a vehicle travels ${dist} km in ${time} hours, what is its speed?`;
+          answer = `${dist / time} km/h`;
+          options = [answer, `${dist * time} km/h`, `${dist + time} km/h`, `${Math.round(dist/2)} km/h`];
+          break;
+        }
+        default:
+          break;
+      }
+
+      // Safeguard options shuffling for MCQ style
+      if (options.length > 0) {
+        options = shuffleArray(Array.from(new Set(options)));
+        while (options.length < 4) {
+          options.push(options[0] + String(options.length));
+        }
+        options = shuffleArray(options);
+      }
+
+      return {
+        id: Math.random().toString(36).substring(2),
+        qTextTa,
+        qTextEn,
+        options,
+        answer,
+        extraData
+      };
+    }
+
+    // --- Main App Component ---
+    function PandaiMathsApp() {
+      // Game State
+      const [studentName, setStudentName] = useState("");
+      const [isLoaded, setIsLoaded] = useState(false);
+      const [currentScreen, setCurrentScreen] = useState("NAME_ENTRY"); // NAME_ENTRY, HOME, TOPICS, SETUP, QUIZ, RESULTS, RECORDS
+      const [prevScreen, setPrevScreen] = useState("HOME");
+      
+      // User Profile / Stats History State
+      const [lifetimeStars, setLifetimeStars] = useState(0);
+      const [history, setHistory] = useState([]);
+
+      // Current Quiz Parameter Preferences State
+      const [selectedStandard, setSelectedStandard] = useState(1);
+      const [selectedTopic, setSelectedTopic] = useState(null);
+      const [questionCount, setQuestionCount] = useState(10);
+      const [difficulty, setDifficulty] = useState("medium");
+
+      // Running Quiz State
+      const [quizQuestions, setQuizQuestions] = useState([]);
+      const [currentQIndex, setCurrentQIndex] = useState(0);
+      const [score, setScore] = useState(0);
+      const [lives, setLives] = useState(3);
+      const [startTime, setStartTime] = useState(null);
+      const [durationSecs, setDurationSecs] = useState(0);
+      
+      // Feedback UI State during Quiz
+      const [selectedChoice, setSelectedChoice] = useState(null);
+      const [columnInputDigits, setColumnInputDigits] = useState([]); // tracks typed characters/digits array
+      const [feedbackStatus, setFeedbackStatus] = useState(null); // 'correct', 'wrong', null
+
+      // Sync local persistence storage setup simulate loading state delay
+      useEffect(() => {
+        setTimeout(() => {
+          const savedName = localStorage.getItem("pm_name") || "";
+          const savedStars = parseInt(localStorage.getItem("pm_stars")) || 0;
+          const savedHistory = JSON.parse(localStorage.getItem("pm_history")) || [];
+          
+          setStudentName(savedName);
+          setLifetimeStars(savedStars);
+          setHistory(savedHistory);
+          
+          if (savedName) {
+            setCurrentScreen("HOME");
+          }
+          setIsLoaded(true);
+        }, 1200);
+      }, []);
+
+      const saveProfileData = (name, stars, newHistory) => {
+        localStorage.setItem("pm_name", name);
+        localStorage.setItem("pm_stars", stars.toString());
+        localStorage.setItem("pm_history", JSON.stringify(newHistory));
+      };
+
+      // Filter available topics dynamic based on primary school standard target
+      const filteredTopics = useMemo(() => {
+        return ALL_TOPICS.filter(t => t.standards.includes(selectedStandard));
+      }, [selectedStandard]);
+
+      // Handle custom unique generated question batch formulation
+      const startQuizSession = () => {
+        const generated = [];
+        const seenSignatures = new Set();
+        let retries = 0;
+
+        while (generated.length < questionCount && retries < 200) {
+          const q = generateQuestion(selectedStandard, selectedTopic.id, difficulty);
+          // Identify duplicate configuration footprint safely
+          const signature = selectedTopic.style === "column" 
+            ? `${q.extraData.op}_${q.extraData.num1}_${q.extraData.num2}` 
+            : q.qTextTa;
+
+          if (!seenSignatures.has(signature)) {
+            seenSignatures.add(signature);
+            generated.push(q);
+          } else {
+            retries++;
+          }
+        }
+
+        // Fallback fallback rule injection if exhausted pool sizes
+        if (generated.length < questionCount) {
+          while (generated.length < questionCount) {
+            generated.push(generateQuestion(selectedStandard, selectedTopic.id, difficulty));
+          }
+        }
+
+        setQuizQuestions(generated);
+        setCurrentQIndex(0);
+        setScore(0);
+        setLives(3);
+        setFeedbackStatus(null);
+        setSelectedChoice(null);
+        setColumnInputDigits([]);
+        setStartTime(Date.now());
+        setCurrentScreen("QUIZ");
+      };
+
+      // Handle Answer Submissions & Core Evaluation Loops
+      const handleMCQSelect = (choice) => {
+        if (feedbackStatus !== null) return;
+        setSelectedChoice(choice);
+        const currentQ = quizQuestions[currentQIndex];
+        const isCorrect = choice === currentQ.answer;
+
+        evaluateAnswerOutcome(isCorrect);
+      };
+
+      const evaluateAnswerOutcome = (isCorrect) => {
+        if (isCorrect) {
+          setFeedbackStatus("correct");
+          setScore(prev => prev + 10);
+        } else {
+          setFeedbackStatus("wrong");
+          setLives(prev => {
+            const nextLives = prev - 1;
+            return nextLives;
+          });
+        }
+
+        setTimeout(() => {
+          advanceOrEndQuiz(isCorrect);
+        }, 1250);
+      };
+
+      const advanceOrEndQuiz = (wasCorrect) => {
+        const nextLives = wasCorrect ? lives : lives - 1;
+        const nextIndex = currentQIndex + 1;
+
+        if (nextLives <= 0 || nextIndex >= quizQuestions.length) {
+          // Finish and log results record
+          const timeElapsed = Math.round((Date.now() - startTime) / 1000);
+          setDurationSecs(timeElapsed);
+          
+          const finalScore = score + (wasCorrect ? 10 : 0);
+          const finalTotalQ = quizQuestions.length;
+          const correctCount = finalScore / 10;
+          const accuracyPct = Math.round((correctCount / finalTotalQ) * 100);
+          
+          let starsEarned = 0;
+          if (accuracyPct >= 90) starsEarned = 3;
+          else if (accuracyPct >= 70) starsEarned = 2;
+          else if (accuracyPct >= 50) starsEarned = 1;
+
+          const newRecord = {
+            id: Math.random().toString(36).substring(2),
+            standard: selectedStandard,
+            topicNameTa: selectedTopic.nameTa,
+            topicNameEn: selectedTopic.nameEn,
+            date: new Date().toLocaleDateString('ms-MY'),
+            difficulty,
+            qCount: finalTotalQ,
+            accuracy: accuracyPct,
+            stars: starsEarned,
+            score: finalScore
+          };
+
+          const updatedHistory = [newRecord, ...history];
+          const updatedStars = lifetimeStars + starsEarned;
+
+          setHistory(updatedHistory);
+          setLifetimeStars(updatedStars);
+          saveProfileData(studentName, updatedStars, updatedHistory);
+          setCurrentScreen("RESULTS");
+        } else {
+          setCurrentQIndex(nextIndex);
+          setFeedbackStatus(null);
+          setSelectedChoice(null);
+          setColumnInputDigits([]);
+        }
+      };
+
+      // Column Arithmetic Input Mechanics
+      const currentQ = quizQuestions[currentQIndex];
+      const targetAnsStr = currentQ ? currentQ.answer : "";
+      const isRightToLeft = currentQ && currentQ.extraData && currentQ.extraData.op !== "÷";
+
+      const handleNumPadPress = (key) => {
+        if (feedbackStatus !== null) return;
+
+        if (key === "⌫") {
+          setColumnInputDigits(prev => prev.slice(0, -1));
+        } else if (key === "CLEAR") {
+          setColumnInputDigits([]);
+        } else {
+          // Add new digit limit size matching the absolute expected length bound
+          if (columnInputDigits.length < targetAnsStr.length) {
+            const nextDigits = [...columnInputDigits, key];
+            setColumnInputDigits(nextDigits);
+
+            // Auto-check boundary validation block once filled
+            if (nextDigits.length === targetAnsStr.length) {
+              // Convert built sequence correctly based on direction orientation logic
+              let typedAnswer = "";
+              if (isRightToLeft) {
+                // Right-to-left means first typed digit fills the rightmost box, 
+                // effectively meaning the output reading runs inverted backwards
+                typedAnswer = [...nextDigits].reverse().join("");
+              } else {
+                typedAnswer = nextDigits.join("");
+              }
+
+              const isCorrect = typedAnswer === targetAnsStr;
+              evaluateAnswerOutcome(isCorrect);
+            }
+          }
+        }
+      };
+
+      // Color Theme Helper utility variables for active selection
+      const currentAccentColor = STANDARDS[selectedStandard].color;
+      const currentDarkText = STANDARDS[selectedStandard].textDark;
+
+      // Badges definitions
+      const badges = [
+        { id: "b1", nameTa: "வெண்கலம்", nameEn: "Bronze", stars: 10, icon: "🥉" },
+        { id: "b2", nameTa: "வெள்ளி", nameEn: "Silver", stars: 25, icon: "🥈" },
+        { id: "b3", nameTa: "தங்கம்", nameEn: "Gold", stars: 50, icon: "🥇" },
+        { id: "b4", nameTa: "வைரம்", nameEn: "Diamond", stars: 100, icon: "💎" }
+      ];
+
+      // Safe Topbar Component rendering
+      const renderTopBar = (showBack = true) => (
+        <div className="w-full bg-white shadow-md border-b-4 border-amber-200 p-4 flex justify-between items-center mb-6">
+          <div className="flex items-center space-x-3">
+            {showBack && (
+              <button 
+                onClick={() => {
+                  if (currentScreen === "QUIZ") {
+                    if (confirm("Are you sure you want to exit the quiz? progress will be lost.")) {
+                      setCurrentScreen("TOPICS");
+                    }
+                  } else {
+                    setCurrentScreen(prevScreen);
+                  }
+                }}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-3 py-1 rounded-xl border-2 border-gray-300 transition-colors"
+              >
+                ←
+              </button>
+            )}
+            <div className="flex items-center space-x-1">
+              <span className="text-2xl">🐯</span>
+              <span className="font-bold text-xl text-amber-800 tracking-wide">எண் புலி <span className="text-sm font-normal text-gray-500 block italic">Number Tiger</span></span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-full border border-amber-300 flex items-center shadow-inner">
+              <span className="mr-1 text-lg">⭐</span> {lifetimeStars}
+            </div>
+            {currentScreen !== "QUIZ" && (
+              <button 
+                onClick={() => {
+                  setPrevScreen(currentScreen);
+                  setCurrentScreen("RECORDS");
+                }} 
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-1.5 rounded-xl border-b-4 border-purple-800 transition-all text-sm btn-display flex flex-col items-center"
+              >
+                <span>📋 பதிவு</span>
+                <span className="text-xs font-normal opacity-80 italic">Records</span>
+              </button>
+            )}
+          </div>
+        </div>
+      );
+
+      // 1. Loading State screen fallback
+      if (!isLoaded) {
+        return (
+          <div className="min-h-screen flex flex-col justify-center items-center bg-amber-50">
+            <div className="text-6xl animate-bounce mb-4">🐯</div>
+            <h2 className="text-2xl font-bold text-amber-800">கணிதத்தில் புத்திசாலி...</h2>
+            <p className="text-gray-500 text-sm italic">Loading your math journey...</p>
+          </div>
+        );
+      }
+
+      // 2. Screen: Name Entry Flow Screen
+      if (currentScreen === "NAME_ENTRY") {
+        return (
+          <div className="min-h-screen flex flex-col justify-center items-center p-4">
+            <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border-4 border-amber-400 text-center">
+              <span className="text-7xl block mb-2">🐯</span>
+              <h1 className="text-3xl font-extrabold text-amber-800 mb-1">கணிதத்தில் புத்திசாலி</h1>
+              <p className="text-sm text-amber-600 font-medium italic mb-6">PANDAIMATHS &bull; Number Tiger</p>
+              
+              <p className="text-gray-700 font-semibold mb-1">மலேசிய தமிழ்மொழிப் பள்ளி மாணவர்களுக்கான கணித விளையாட்டு!</p>
+              <p className="text-xs text-gray-500 italic mb-6">Interactive gamified math practice for Malaysian Tamil-medium primary schools.</p>
+
+              <div className="mb-6 text-left">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  உங்கள் பெயரை உள்ளிடவும் <span className="text-xs font-normal text-gray-500 italic">(Enter your name)</span>:
+                </label>
+                <input 
+                  type="text" 
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  placeholder="e.g. கவின் / Kavin" 
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-amber-300 focus:outline-none focus:border-amber-500 text-lg font-semibold text-center"
+                />
+              </div>
+
+              <button
+                disabled={!studentName.trim()}
+                onClick={() => {
+                  saveProfileData(studentName, lifetimeStars, history);
+                  setCurrentScreen("HOME");
+                }}
+                className={`w-full py-4 rounded-2xl text-white font-black text-xl tracking-wider shadow-lg transition-all btn-display ${
+                  studentName.trim() ? "bg-amber-500 hover:bg-amber-600 border-b-4 border-amber-700 active:transform active:scale-95" : "bg-gray-300 cursor-not-allowed"
+                }`}
+              >
+                🚀 தொடங்கு <span className="text-sm font-normal block italic">(Start)</span>
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // 3. Screen: HOME Screen (Standard Selection Path)
+      if (currentScreen === "HOME") {
+        return (
+          <div className="min-h-screen pb-12 flex flex-col items-center">
+            {renderTopBar(false)}
+            
+            <div className="max-w-xl w-full px-4 text-center">
+              <h2 className="text-3xl font-extrabold text-amber-900 mb-1">வணக்கம், {studentName}! 👋</h2>
+              <p className="text-gray-700 font-medium">பயிற்சி செய்ய உங்கள் தரத்தைத் தேர்ந்தெடுக்கவும்.</p>
+              <p className="text-xs text-gray-500 italic mb-8">Please choose your standard to practice.</p>
+
+              {/* Winding Vertical Trail Path */}
+              <div className="relative flex flex-col items-center my-8">
+                <div className="absolute top-0 bottom-0 w-1 bg-dashed border-l-4 border-dashed border-amber-300 left-1/2 transform -translate-x-1/2 z-0"></div>
+                
+                {Object.values(STANDARDS).map((std, idx) => {
+                  // Determine zigzag horizontal alignment layout distribution flow
+                  let alignClass = "self-center";
+                  if (idx % 3 === 0) alignClass = "self-start md:ml-6";
+                  else if (idx % 3 === 2) alignClass = "self-end md:mr-6";
+
+                  return (
+                    <button
+                      key={std.id}
+                      onClick={() => {
+                        setSelectedStandard(std.id);
+                        setPrevScreen("HOME");
+                        setCurrentScreen("TOPICS");
+                      }}
+                      style={{ backgroundColor: std.color }}
+                      className={`z-10 my-4 ${alignClass} w-72 rounded-3xl p-4 text-white text-center shadow-lg hover:shadow-2xl hover:scale-105 active:scale-95 transition-all border-b-4 border-black/20 flex flex-col items-center`}
+                    >
+                      <span className="text-3xl mb-1">{std.emoji}</span>
+                      <span className="text-xl font-black btn-display">{std.labelTa} &bull; <span className="text-base font-normal italic">{std.labelEn}</span></span>
+                      <div className="mt-1 bg-white/20 px-3 py-0.5 rounded-full text-xs font-bold w-full truncate">
+                        {std.tagTa} / <span className="italic font-normal">{std.tagEn}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // 4. Screen: Topics Screen (2 Column Selection Grid)
+      if (currentScreen === "TOPICS") {
+        return (
+          <div className="min-h-screen pb-12">
+            {renderTopBar(true)}
+            
+            <div className="max-w-4xl mx-auto px-4">
+              <div className="text-center mb-8 bg-white p-4 rounded-2xl border-2 shadow-sm" style={{ borderColor: currentAccentColor }}>
+                <h2 className="text-2xl font-black" style={{ color: currentDarkText }}>
+                  {STANDARDS[selectedStandard].labelTa} - பாடத்தலைப்புகள்
+                </h2>
+                <p className="text-sm text-gray-500 italic">
+                  {STANDARDS[selectedStandard].labelEn} - Select a Mathematics Topic
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                {filteredTopics.map(topic => (
+                  <button
+                    key={topic.id}
+                    onClick={() => {
+                      setSelectedTopic(topic);
+                      setPrevScreen("TOPICS");
+                      setCurrentScreen("SETUP");
+                    }}
+                    className="bg-white hover:bg-amber-50 p-4 rounded-2xl shadow-md border-2 border-gray-200 hover:border-amber-400 text-left transition-all flex items-center space-x-3 active:scale-95 group"
+                  >
+                    <span className="text-3xl p-2 bg-amber-100 rounded-xl group-hover:bg-amber-200 transition-colors">{topic.icon}</span>
+                    <div className="overflow-hidden">
+                      <p className="font-bold text-gray-800 text-sm md:text-base truncate">{topic.nameTa}</p>
+                      <p className="text-xs text-gray-400 italic font-medium truncate">{topic.nameEn}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // 5. Screen: SETUP Screen (Question Counts and Difficulty Parameter Controls)
+      if (currentScreen === "SETUP") {
+        return (
+          <div className="min-h-screen pb-12">
+            {renderTopBar(true)}
+            
+            <div className="max-w-md mx-auto px-4">
+              <div className="bg-white rounded-3xl shadow-xl p-6 border-4 text-center mb-6" style={{ borderColor: currentAccentColor }}>
+                <span className="text-5xl block mb-2">{selectedTopic.icon}</span>
+                <h2 className="text-2xl font-bold text-gray-800">{selectedTopic.nameTa}</h2>
+                <p className="text-xs text-gray-500 italic mb-4">{selectedTopic.nameEn}</p>
+                <div className="inline-block text-xs font-bold px-3 py-1 rounded-full text-white" style={{ backgroundColor: currentAccentColor }}>
+                  {STANDARDS[selectedStandard].labelTa} &bull; {STANDARDS[selectedStandard].labelEn}
+                </div>
+              </div>
+
+              {/* Selector Preference 1: Questions Count */}
+              <div className="bg-white rounded-2xl p-5 shadow-md mb-4 border border-gray-200">
+                <label className="block text-sm font-bold text-gray-700 mb-3 text-center">
+                  கேள்விகளின் எண்ணிக்கை <span className="text-xs font-normal text-gray-500 block italic">(Number of Questions)</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[10, 20, 50].map(count => {
+                    const isSelected = questionCount === count;
+                    return (
+                      <button
+                        key={count}
+                        onClick={() => setQuestionCount(count)}
+                        style={isSelected ? { backgroundColor: currentAccentColor, color: '#fff' } : {}}
+                        className={`py-2 rounded-xl border-2 text-center font-bold transition-all ${
+                          isSelected ? 'border-transparent shadow-md scale-105 text-white' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {count}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Selector Preference 2: Difficulty Selection Tier mapping custom colors rules */}
+              <div className="bg-white rounded-2xl p-5 shadow-md mb-6 border border-gray-200">
+                <label className="block text-sm font-bold text-gray-700 mb-3 text-center">
+                  சரம நிலை <span className="text-xs font-normal text-gray-500 block italic">(Difficulty Level)</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "easy", ta: "எளிது", en: "Easy", activeColor: "#22C55E" },
+                    { id: "medium", ta: "நடுத்தரம்", en: "Medium", activeColor: "#F59E0B" },
+                    { id: "tough", ta: "கடினம்", en: "Tough", activeColor: "#EF4444" }
+                  ].map(diffOpt => {
+                    const isSelected = difficulty === diffOpt.id;
+                    return (
+                      <button
+                        key={diffOpt.id}
+                        onClick={() => setDifficulty(diffOpt.id)}
+                        style={isSelected ? { backgroundColor: diffOpt.activeColor, color: '#fff', borderColor: 'transparent' } : {}}
+                        className={`py-2 px-1 rounded-xl border-2 text-center text-xs md:text-sm font-bold transition-all flex flex-col items-center justify-center ${
+                          isSelected ? 'shadow-md scale-105 text-white' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span>{diffOpt.ta}</span>
+                        <span className="text-[10px] font-normal opacity-80 italic">{diffOpt.en}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Big Action Submit Button triggers internal formulation matrix */}
+              <button
+                onClick={startQuizSession}
+                style={{ backgroundColor: currentAccentColor }}
+                className="w-full py-4 rounded-2xl text-white font-black text-xl shadow-lg hover:brightness-110 active:transform active:scale-95 transition-all text-center border-b-4 border-black/20 btn-display flex flex-col items-center"
+              >
+                <span>🚀 தொடங்குக!</span>
+                <span className="text-sm font-normal italic">Start Practice</span>
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // 6. Screen: Active Interactive QUIZ Session Arena
+      if (currentScreen === "QUIZ") {
+        const currentQ = quizQuestions[currentQIndex];
+        
+        // Safety lock mapping check block
+        if (!currentQ) return null;
+
+        const isColumnStyle = selectedTopic.style === "column";
+
+        return (
+          <div className="min-h-screen pb-12 flex flex-col items-center">
+            {renderTopBar(true)}
+            
+            <div className="max-w-xl w-full px-4">
+              {/* Live Status Tracker Bar elements */}
+              <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-200 flex justify-between items-center mb-6 text-sm font-bold text-gray-700">
+                <div>
+                  வினா <span className="text-xs text-gray-400 italic">(Q)</span>: <span className="text-amber-600 text-base">{currentQIndex + 1}</span> / {quizQuestions.length}
+                </div>
+                <div className="flex items-center space-x-1 tracking-wider">
+                  {[1, 2, 3].map((h) => (
+                    <span key={h} className="text-xl transition-all">
+                      {h <= lives ? "❤️" : "🖤"}
+                    </span>
+                  ))}
+                </div>
+                <div>
+                  மதிப்பெண் <span className="text-xs text-gray-400 italic">(Score)</span>: <span className="text-green-600 text-base">{score}</span>
+                </div>
+              </div>
+
+              {/* Core Presentation Content Canvas Layout Wrapper Blocks */}
+              {isColumnStyle ? (
+                /* STYLE A: Specialized Dynamic Math Digit Input Alignment Column Entry Blocks */
+                <div className="bg-white rounded-3xl shadow-xl p-6 border-2 border-gray-100 flex flex-col items-center">
+                  <p className="text-xs text-center font-bold text-gray-500 bg-amber-50 px-4 py-1.5 rounded-full border mb-6">
+                    {currentQ.extraData.op === "÷" 
+                      ? "ஈவுத்தொகையை இடமிருந்து வலமாக உள்ளிடவும் (Enter the quotient from left to right)"
+                      : "பதிலை வலமிருந்து இடமாக உள்ளிடவும் (Enter the answer from right to left)"}
+                  </p>
+
+                  <div className="my-8 font-mono text-4xl font-bold tracking-widest text-gray-800 w-full flex flex-col items-center">
+                    {currentQ.extraData.op === "÷" ? (
+                      /* Special Subrenderer layout wrapper: Long division brackets block mapping design rules */
+                      <div className="flex flex-col items-end relative mr-8">
+                        {/* Interactive result placeholder layout grid map inside quotient rows */}
+                        <div className="flex justify-end mb-1 pr-1">
+                          {Array.from({ length: targetAnsStr.length }).map((_, i) => {
+                            const digitVal = columnInputDigits[i] || "";
+                            // Left-to-right active box calculation index check
+                            const isActive = feedbackStatus === null && columnInputDigits.length === i;
+                            
+                            let boxBorderColor = "border-gray-300";
+                            if (isActive) boxBorderColor = "border-blue-500 border-active";
+                            if (feedbackStatus === "correct") boxBorderColor = "border-green-500 bg-green-50";
+                            if (feedbackStatus === "wrong") boxBorderColor = "border-red-500 bg-red-50";
+
+                            return (
+                              <div 
+                                key={i} 
+                                className={`w-12 h-14 border-2 text-center flex items-center justify-center rounded-lg mx-0.5 transition-all text-2xl ${boxBorderColor}`}
+                                style={isActive ? { borderColor: currentAccentColor } : {}}
+                              >
+                                {digitVal}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Main lower layout rows bracket container wrapper */}
+                        <div className="flex items-center border-t-4 border-gray-800 pt-1">
+                          <span className="text-2xl text-gray-500 mr-2 font-sans">{currentQ.extraData.num2}</span>
+                          <span className="border-l-4 border-gray-800 pl-3 py-1 rounded-tl-md">{currentQ.extraData.num1}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Direct Stacked Grid Layout structure mapping standard addition subtraction multiplication */
+                      <div className="flex flex-col items-end pr-8 relative">
+                        <div className="mb-1">{currentQ.extraData.num1}</div>
+                        <div className="border-b-4 border-gray-800 pb-2 mb-3 relative w-full text-right">
+                          <span className="absolute left-0 bottom-1 text-3xl font-sans text-gray-400">{currentQ.extraData.op}</span>
+                          {currentQ.extraData.num2}
+                        </div>
+                        {/* Dynamic Input Row Blocks matching expected digit array counts lengths accurately */}
+                        <div className="flex justify-end">
+                          {Array.from({ length: targetAnsStr.length }).map((_, i) => {
+                            // Map index matching right-to-left orientation rules correctly
+                            // target index reads inverted mirror array sequence indexes
+                            const boxIndexFromRight = targetAnsStr.length - 1 - i;
+                            const digitVal = columnInputDigits[boxIndexFromRight] || "";
+                            
+                            // Right to left calculation tracker checks matching index keys
+                            const isActive = feedbackStatus === null && columnInputDigits.length === boxIndexFromRight;
+
+                            let boxBorderColor = "border-gray-300";
+                            if (isActive) boxBorderColor = "border-blue-500 border-active";
+                            if (feedbackStatus === "correct") boxBorderColor = "border-green-500 bg-green-50 text-green-600";
+                            if (feedbackStatus === "wrong") boxBorderColor = "border-red-500 bg-red-50 text-red-600";
+
+                            return (
+                              <div 
+                                key={i} 
+                                className={`w-12 h-14 border-2 text-center flex items-center justify-center rounded-lg mx-0.5 transition-all text-2xl ${boxBorderColor}`}
+                                style={isActive ? { borderColor: currentAccentColor } : {}}
+                              >
+                                {digitVal}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Custom Styled Functional Numeric Keypad Elements block grid layouts */}
+                  <div className="w-full max-w-sm mt-4 grid grid-cols-3 gap-3">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                      <button
+                        key={num}
+                        onClick={() => handleNumPadPress(String(num))}
+                        className="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-bold py-3 rounded-2xl text-xl shadow border border-gray-200 transition-colors"
+                      >
+                        {num}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => handleNumPadPress("CLEAR")}
+                      className="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-3 rounded-2xl text-sm border border-red-200 transition-colors flex flex-col items-center justify-center"
+                    >
+                      <span>அழி</span>
+                      <span className="text-[10px] font-normal italic">Clear</span>
+                    </button>
+                    <button
+                      onClick={() => handleNumPadPress("0")}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-2xl text-xl shadow border border-gray-200 transition-colors"
+                    >
+                      0
+                    </button>
+                    <button
+                      onClick={() => handleNumPadPress("⌫")}
+                      className="bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-3 rounded-2xl text-xl border border-amber-200 transition-colors flex items-center justify-center"
+                    >
+                      ⌫
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* STYLE B: Standard Dynamic Bilingual Multiple-Choice Option Grid Setups */
+                <div className="w-full flex flex-col space-y-4">
+                  <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-200 text-center min-h-[120px] flex flex-col justify-center">
+                    <h3 className="text-xl font-bold text-gray-800 leading-relaxed mb-2">{currentQ.qTextTa}</h3>
+                    <p className="text-sm text-gray-400 italic font-medium">{currentQ.qTextEn}</p>
+                  </div>
+
+                  <div className="flex flex-col space-y-3 w-full">
+                    {currentQ.options.map((option, idx) => {
+                      const isSelected = selectedChoice === option;
+                      const isCorrectAnswer = option === currentQ.answer;
+                      
+                      let btnStyle = "bg-white hover:bg-amber-50 border-gray-200 text-gray-800";
+                      
+                      if (feedbackStatus !== null) {
+                        if (isCorrectAnswer) {
+                          btnStyle = "bg-green-500 text-white border-transparent shadow-md";
+                        } else if (isSelected) {
+                          btnStyle = "bg-red-500 text-white border-transparent shadow-md";
+                        } else {
+                          btnStyle = "bg-white opacity-60 border-gray-100 text-gray-400";
+                        }
+                      }
+
+                      // Dynamic splitting logic if word options have integrated translation markings
+                      const optionParts = option.split(" / ");
+                      const taLine = optionParts[0];
+                      const enLine = optionParts[1] || optionParts[0];
+
+                      return (
+                        <button
+                          key={idx}
+                          disabled={feedbackStatus !== null}
+                          onClick={() => handleMCQSelect(option)}
+                          className={`w-full p-4 rounded-2xl border-2 font-semibold text-center transition-all active:scale-[0.99] flex flex-col items-center justify-center shadow-sm ${btnStyle}`}
+                        >
+                          <span className="text-base md:text-lg">{taLine}</span>
+                          {/* Always keep a secondary inline smaller translation note layout block for balance */}
+                          <span className={`text-xs block font-normal italic ${isSelected || (feedbackStatus && isCorrectAnswer) ? 'text-white/90' : 'text-gray-400'}`}>
+                            {enLine}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // 7. Screen: RESULTS Summary Card Dashboard
+      if (currentScreen === "RESULTS") {
+        const totalQ = quizQuestions.length;
+        const correctAnswers = score / 10;
+        const accuracy = Math.round((correctAnswers / totalQ) * 100);
+        const isGameOver = lives <= 0;
+
+        // Dynamic multi-tier feedback statement injection
+        let feedbackHeadingTa = "வாழ்த்துகள்!";
+        let feedbackHeadingEn = "Congratulations!";
+        let msgTa = "சிறப்பான செயல்பாடு! கணிதத்தில் நீங்கள் புத்திசாலி தான்!";
+        let msgEn = "Fantastic job! You are truly smart at mathematics!";
+        let starRating = 0;
+
+        if (accuracy >= 90) {
+          starRating = 3;
+        } else if (accuracy >= 70) {
+          starRating = 2;
+          msgTa = "நல்ல முயற்சி! இன்னும் கொஞ்சம் பழகினால் முழு மதிப்பெண் பெறலாம்!";
+          msgEn = "Good effort! A bit more practice will bring a perfect score!";
+        } else if (accuracy >= 50) {
+          starRating = 1;
+          msgTa = "தொடர்ந்து பயிற்சி செய்யுங்கள்! உங்களால் இன்னும் சிறப்பாக செய்ய முடியும்!";
+          msgEn = "Keep practicing! You can perform much better next time!";
+        } else {
+          starRating = 0;
+          msgTa = "விடாமுயற்சியே வெற்றி தரும்! மீண்டும் ஒருமுறை முயற்சி செய்து பாருங்கள்!";
+          msgEn = "Perseverance brings success! Give it another try!";
+        }
+
+        if (isGameOver) {
+          feedbackHeadingTa = "விளையாட்டு முடிந்தது!";
+          feedbackHeadingEn = "Game Over!";
+        }
+
+        return (
+          <div className="min-h-screen pb-12 flex flex-col items-center">
+            {renderTopBar(false)}
+            
+            <div className="max-w-md w-full px-4">
+              <div className="bg-white rounded-3xl shadow-xl p-6 border-4 border-amber-400 text-center mb-6">
+                <span className="text-6xl block mb-2">{starRating > 0 ? "🏆" : "🎯"}</span>
+                <h2 className="text-3xl font-extrabold text-amber-900">{feedbackHeadingTa}</h2>
+                <p className="text-xs text-amber-600 font-medium italic mb-4">{feedbackHeadingEn}</p>
+                
+                <h4 className="text-lg font-bold text-gray-700 mb-1">{studentName}</h4>
+
+                {/* Stars metrics display logic row block */}
+                <div className="flex justify-center space-x-2 my-4">
+                  {[1, 2, 3].map(sNum => (
+                    <span key={sNum} className="text-3xl">
+                      {sNum <= starRating ? "⭐" : "⬜"}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 my-4 text-sm font-semibold text-amber-900">
+                  <p>{msgTa}</p>
+                  <p className="text-xs text-amber-700/70 font-normal italic mt-1">{msgEn}</p>
+                </div>
+
+                {/* Score Summary Metrics Grid Table Layout Box */}
+                <div className="border-t border-b border-gray-200 py-3 my-4 space-y-2 text-left">
+                  <div className="flex justify-between items-center text-sm text-gray-700">
+                    <div>
+                      <p className="font-bold">சரியான பதில்கள்</p>
+                      <p className="text-[10px] text-gray-400 italic">Correct Answers</p>
+                    </div>
+                    <span className="font-mono font-bold text-base">{correctAnswers} / {totalQ}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-700">
+                    <div>
+                      <p className="font-bold">துல்லியம்</p>
+                      <p className="text-[10px] text-gray-400 italic">Accuracy</p>
+                    </div>
+                    <span className="font-mono font-bold text-base text-blue-600">{accuracy}%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-700">
+                    <div>
+                      <p className="font-bold">எடுத்துக்கொண்ட நேரம்</p>
+                      <p className="text-[10px] text-gray-400 italic">Time Taken</p>
+                    </div>
+                    <span className="font-mono font-bold text-base">{durationSecs} விநாடிகள் / s</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-700">
+                    <div>
+                      <p className="font-bold">பெற்ற மதிப்பெண்</p>
+                      <p className="text-[10px] text-gray-400 italic">Total Score</p>
+                    </div>
+                    <span className="font-mono font-bold text-lg text-green-600">+{score}</span>
+                  </div>
+                </div>
+
+                {/* Navigation Routing Action Elements Block Row */}
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <button
+                    onClick={() => setCurrentScreen("SETUP")}
+                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-2 rounded-2xl border-b-4 border-amber-700 active:scale-95 transition-all text-sm btn-display flex flex-col items-center justify-center"
+                  >
+                    <span>🔁 மீண்டும் விளையாடு</span>
+                    <span className="text-[10px] font-normal opacity-90 italic">Play Again</span>
+                  </button>
+                  <button
+                    onClick={() => setCurrentScreen("TOPICS")}
+                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-2 rounded-2xl border-b-4 border-gray-800 active:scale-95 transition-all text-sm btn-display flex flex-col items-center justify-center"
+                  >
+                    <span>🏠 மெனுவிற்குச் செல்</span>
+                    <span className="text-[10px] font-normal opacity-90 italic">Back to Menu</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // 8. Screen: RECORDS Analytics Tracker Log Page
+      if (currentScreen === "RECORDS") {
+        return (
+          <div className="min-h-screen pb-12">
+            {renderTopBar(true)}
+            
+            <div className="max-w-2xl mx-auto px-4">
+              {/* Badges Milestones Unlocking Segment Box */}
+              <div className="bg-white rounded-3xl shadow-md p-6 border border-gray-200 mb-6">
+                <h3 className="text-xl font-bold text-purple-900 mb-1">🏅 சாதனை பதக்கங்கள்</h3>
+                <p className="text-xs text-gray-400 italic mb-4">Achievement Badges - Earn stars to unlock milestones</p>
+                
+                <div className="grid grid-cols-4 gap-2">
+                  {badges.map(badge => {
+                    const isUnlocked = lifetimeStars >= badge.stars;
+                    return (
+                      <div 
+                        key={badge.id}
+                        className={`p-3 rounded-2xl border-2 text-center flex flex-col items-center justify-center transition-all ${
+                          isUnlocked ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-gray-50 border-gray-200 opacity-40 grayscale'
+                        }`}
+                      >
+                        <span className="text-3xl mb-1">{badge.icon}</span>
+                        <p className="font-bold text-xs text-gray-800 leading-tight">{badge.nameTa}</p>
+                        <p className="text-[9px] text-gray-400 italic mb-1">{badge.nameEn}</p>
+                        <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-bold">
+                          ⭐ {badge.stars}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Reverse Chronological Log Performance Records Section Table Cards Grid */}
+              <div className="bg-white rounded-3xl shadow-md p-6 border border-gray-200">
+                <h3 className="text-xl font-bold text-amber-900 mb-1">📋 செயல்திறன் பதிவு</h3>
+                <p className="text-xs text-gray-400 italic mb-4">Performance Record - Past Quiz Attempts history log</p>
+
+                {history.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 text-sm italic">
+                    <p>இன்னும் எந்தப் பதிவுகளும் இல்லை.</p>
+                    <p className="text-xs">No practice history recorded yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                    {history.map(rec => (
+                      <div key={rec.id} className="p-3 rounded-xl border border-gray-100 bg-amber-50/40 flex justify-between items-center text-xs">
+                        <div>
+                          <p className="font-bold text-gray-800">
+                            {rec.topicNameTa} <span className="text-gray-400 font-normal">({rec.topicNameEn})</span>
+                          </p>
+                          <p className="text-gray-500 font-medium mt-0.5">
+                            தரம் {rec.standard} &bull; <span className="capitalize">{rec.difficulty}</span> &bull; {rec.date}
+                          </p>
+                        </div>
+                        <div className="text-right flex flex-col items-end">
+                          <span className="font-mono font-bold text-sm text-purple-700">{rec.accuracy}% Accuracy</span>
+                          <span className="text-amber-500 font-bold mt-0.5">
+                            {Array.from({ length: rec.stars }).map((_, i) => "⭐")}
+                            {rec.stars === 0 && <span className="text-gray-300 text-[10px] italic">No stars</span>}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    // Mount to Virtual DOM root selector injection anchor element point
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PandaiMathsApp />);
+  </script>
+</body>
+</html>
